@@ -1,0 +1,49 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlserver"
+  url      = env("DATABASE_URL")
+}
+
+model CentrosCosto {
+  centroCostoId Int         @id @default(autoincrement()) @map("CentroCostoId")
+  nombre        String      @db.NVarChar(100) @map("Nombre")
+  empleados     Empleados[]
+
+  @@map("CentrosCosto")
+}
+
+model Empleados {
+  empleadoId       Int               @id @default(autoincrement()) @map("EmpleadoId")
+  nombre           String            @db.NVarChar(150) @map("Nombre")
+  centroCostoId    Int               @map("CentroCostoId")
+  activo           Boolean           @default(true) @map("Activo")
+  centroCosto      CentrosCosto      @relation(fields: [centroCostoId], references: [centroCostoId])
+  planillaDetalles PlanillaDetalle[]
+
+  @@map("Empleados")
+}
+
+model Planillas {
+  planillaId       Int               @id @default(autoincrement()) @map("PlanillaId")
+  periodo          String            @db.NVarChar(7) @map("Periodo")
+  estado           String            @default("Borrador") @db.NVarChar(20) @map("Estado")
+  planillaDetalles PlanillaDetalle[]
+
+  @@map("Planillas")
+}
+
+model PlanillaDetalle {
+  detalleId  Int       @id @default(autoincrement()) @map("DetalleId")
+  planillaId Int       @map("PlanillaId")
+  empleadoId Int       @map("EmpleadoId")
+  concepto   String    @db.NVarChar(100) @map("Concepto")
+  monto      Decimal   @db.Decimal(18, 2) @map("Monto")
+  tipo       String    @db.Char(1) @map("Tipo")
+  planilla   Planillas @relation(fields: [planillaId], references: [planillaId], onDelete: Cascade)
+  empleado   Empleados @relation(fields: [empleadoId], references: [empleadoId])
+
+  @@map("PlanillaDetalle")
+}
