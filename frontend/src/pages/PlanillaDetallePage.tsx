@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect, useMemo } from "react";
 import type { Planilla } from "../types/planilla";
+// Asegúrate de que el nombre coincida con tu archivo: planilla.service o planillas.service
 import { PlanillasApiService } from "../services/planillas.service";
 import { Header } from "../components/Header";
 import { FilterBar } from "../components/FilterBar";
@@ -24,7 +25,9 @@ export const PlanillaDetallePage: React.FC = () => {
         const data = await PlanillasApiService.getDetallePlanilla(101);
         setPlanilla(data);
       } catch (err: any) {
-        setErrorMessage(err.message || "Error al obtener la planilla");
+        setErrorMessage(
+          err.message || "Error al obtener la planilla desde la base de datos",
+        );
       } finally {
         setIsLoading(false);
       }
@@ -34,28 +37,30 @@ export const PlanillaDetallePage: React.FC = () => {
   }, []);
 
   const centrosCosto = useMemo(() => {
-    if (!planilla) return [];
+    if (!planilla || !planilla.planillaDetalles) return [];
     const map = new Map<number, string>();
     planilla.planillaDetalles.forEach((det) => {
-      const cc = det.empleado.centroCosto;
-      if (cc) map.set(cc.centroCostoId, cc.nombre);
+      const cc = det.empleado?.centroCosto;
+      if (cc && cc.centroCostoId) {
+        map.set(cc.centroCostoId, cc.nombre);
+      }
     });
     return Array.from(map.entries()).map(([id, nombre]) => ({ id, nombre }));
   }, [planilla]);
 
   const movimientosFiltrados = useMemo(() => {
-    if (!planilla) return [];
+    if (!planilla || !planilla.planillaDetalles) return [];
     if (selectedCentroCosto === "TODOS") return planilla.planillaDetalles;
     const centroId = Number(selectedCentroCosto);
     return planilla.planillaDetalles.filter(
-      (det) => det.empleado.centroCostoId === centroId,
+      (det) => det.empleado?.centroCostoId === centroId,
     );
   }, [planilla, selectedCentroCosto]);
 
   const totales = useMemo(() => {
     return movimientosFiltrados.reduce(
       (acc, item) => {
-        const monto = Number(item.monto);
+        const monto = Number(item.monto) || 0;
         if (item.tipo === "D") acc.debitos += monto;
         if (item.tipo === "C") acc.creditos += monto;
         return acc;
@@ -89,7 +94,7 @@ export const PlanillaDetallePage: React.FC = () => {
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50">
         <div className="w-10 h-10 border-4 border-slate-200 border-t-blue-600 rounded-full animate-spin"></div>
         <p className="mt-4 text-sm font-medium text-slate-500">
-          Cargando movimientos de planilla...
+          Cargando movimientos de planilla desde el servidor...
         </p>
       </div>
     );
@@ -109,7 +114,7 @@ export const PlanillaDetallePage: React.FC = () => {
 
   return (
     <main className="min-h-screen bg-slate-50 py-10 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-6xl mx-auto space-y-6">
         <Header
           planillaId={planilla.planillaId}
           periodo={planilla.periodo}

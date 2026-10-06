@@ -18,9 +18,9 @@ const MOCK_PLANILLA: Planilla = {
       empleado: {
         empleadoId: 1,
         nombre: "Carlos Mendoza",
-        centroCostoId: 10,
+        centroCostoId: 1,
         activo: true,
-        centroCosto: { centroCostoId: 10, nombre: "Tecnología" },
+        centroCosto: { centroCostoId: 1, nombre: "Tecnología" },
       },
     },
     {
@@ -33,9 +33,9 @@ const MOCK_PLANILLA: Planilla = {
       empleado: {
         empleadoId: 1,
         nombre: "Carlos Mendoza",
-        centroCostoId: 10,
+        centroCostoId: 1,
         activo: true,
-        centroCosto: { centroCostoId: 10, nombre: "Tecnología" },
+        centroCosto: { centroCostoId: 1, nombre: "Tecnología" },
       },
     },
     {
@@ -48,9 +48,9 @@ const MOCK_PLANILLA: Planilla = {
       empleado: {
         empleadoId: 1,
         nombre: "Carlos Mendoza",
-        centroCostoId: 10,
+        centroCostoId: 1,
         activo: true,
-        centroCosto: { centroCostoId: 10, nombre: "Tecnología" },
+        centroCosto: { centroCostoId: 1, nombre: "Tecnología" },
       },
     },
     {
@@ -63,9 +63,9 @@ const MOCK_PLANILLA: Planilla = {
       empleado: {
         empleadoId: 2,
         nombre: "María Elena Ramos",
-        centroCostoId: 20,
+        centroCostoId: 2,
         activo: true,
-        centroCosto: { centroCostoId: 20, nombre: "Operaciones" },
+        centroCosto: { centroCostoId: 2, nombre: "Operaciones" },
       },
     },
     {
@@ -78,9 +78,9 @@ const MOCK_PLANILLA: Planilla = {
       empleado: {
         empleadoId: 2,
         nombre: "María Elena Ramos",
-        centroCostoId: 20,
+        centroCostoId: 2,
         activo: true,
-        centroCosto: { centroCostoId: 20, nombre: "Operaciones" },
+        centroCosto: { centroCostoId: 2, nombre: "Operaciones" },
       },
     },
     {
@@ -93,9 +93,9 @@ const MOCK_PLANILLA: Planilla = {
       empleado: {
         empleadoId: 2,
         nombre: "María Elena Ramos",
-        centroCostoId: 20,
+        centroCostoId: 2,
         activo: true,
-        centroCosto: { centroCostoId: 20, nombre: "Operaciones" },
+        centroCosto: { centroCostoId: 2, nombre: "Operaciones" },
       },
     },
   ],
@@ -108,14 +108,26 @@ export const PlanillasApiService = {
       if (!res.ok) {
         throw new Error(`Error en servidor: HTTP ${res.status}`);
       }
-      return await res.json();
+      const data: Planilla = await res.json();
+
+      // Normalizar montos por si la BD los entrega como strings
+      if (data.planillaDetalles) {
+        data.planillaDetalles = data.planillaDetalles.map((d) => ({
+          ...d,
+          monto: Number(d.monto),
+        }));
+      }
+
+      return data;
     } catch (error) {
       console.warn("Backend no disponible, cargando mock de datos:", error);
       return MOCK_PLANILLA;
     }
   },
 
-  async enviarASap(id: number): Promise<{ mensaje: string; estado: string }> {
+  async enviarASap(
+    id: number,
+  ): Promise<{ mensaje: string; estado: string; docEntry?: number }> {
     try {
       const res = await fetch(`${API_BASE_URL}/planillas/${id}/enviar-sap`, {
         method: "POST",
@@ -125,13 +137,20 @@ export const PlanillasApiService = {
       if (!res.ok) {
         throw new Error(data.error || "Fallo en la comunicación con SAP");
       }
-      return data;
+      return {
+        mensaje:
+          data.mensaje || data.message || "Planilla enviada con éxito a SAP",
+        estado: data.estado || "EnviadaSAP",
+        docEntry: data.sapDocEntry || data.docEntry,
+      };
     } catch (error: any) {
-      if (error.message.includes("Failed to fetch")) {
+      // Si el backend estuviera apagado al momento de la demo
+      if (error.message && error.message.includes("Failed to fetch")) {
         await new Promise((r) => setTimeout(r, 600));
         return {
           mensaje: "Planilla enviada con éxito a SAP (Simulación local)",
           estado: "EnviadaSAP",
+          docEntry: 89012,
         };
       }
       throw error;
