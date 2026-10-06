@@ -1,0 +1,50 @@
+version: "3.8"
+
+services:
+  sqlserver:
+    build:
+      context: ./database
+      dockerfile: Dockerfile
+    container_name: sqlserver_nomina
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=PasswordSeguro123!
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+    networks:
+      - nomina_net
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P PasswordSeguro123! -C -Q 'SELECT 1' || exit 1",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: backend_nomina
+    environment:
+      - PORT=3001
+      - DATABASE_URL=sqlserver://sqlserver:1433;database=NominaContabilidadDB;user=sa;password=PasswordSeguro123!;encrypt=false;trustServerCertificate=true
+    ports:
+      - "3001:3001"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    networks:
+      - nomina_net
+
+volumes:
+  sqlserver_data:
+
+networks:
+  nomina_net:
+    driver: bridge
